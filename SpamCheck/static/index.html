@@ -14,6 +14,10 @@
     <script>
         function classify() {
             const text = document.getElementById("text").value;
+            if (!text.trim()) {
+                document.getElementById("result").innerText = "메시지를 입력해주세요.";
+                return;
+            }
             fetch("/classify", {
                 method: "POST",
                 body: JSON.stringify({ text })

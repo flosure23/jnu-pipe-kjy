@@ -11,16 +11,22 @@
     <textarea id="text" rows="5" cols="60" placeholder="스팸으로 의심되는 메시지를 붙여넣어주세요!"></textarea><br><br>
     <button onclick="classify()">분류</button>
     <h3 id="result"></h3>
+
     <script>
         function classify() {
             const text = document.getElementById("text").value;
+
             if (!text.trim()) {
                 document.getElementById("result").innerText = "메시지를 입력해주세요.";
                 return;
             }
+
             fetch("/classify", {
                 method: "POST",
-                body: JSON.stringify({ text })
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ text: text })
             })
                 .then(res => res.json())
                 .then(data => {

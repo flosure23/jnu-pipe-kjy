@@ -1,0 +1,262 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/main.py
+app/spam.py
+requirements.txt
+static/index.html
+tests/conftest.py
+tests/test_api.py
+tests/test_spam.py
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/main.py">
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from app.spam import check_spam
+from pydantic import BaseModel
+
+# FastAPI 기반 웹 앱 생성
+# /docs (Swagger UI)에 표기되는 이름
+app = FastAPI(title="SpamCheck Web")
+
+# 정적 HTML 서빙: static 안에 파일들을 URL로 접근가능하게 설정
+# {URL}/static/…… 으로 접근 가능
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# 메인 페이지 (/) 처리: "/"로 접속 시 index.html 반환
+@app.get("/", response_class=HTMLResponse)
+def home():
+    with open("static/index.html", encoding="utf-8") as f:
+        return f.read()
+
+class ClassifyRequest(BaseModel):
+    text: str
+
+# classify 요청이 올 때 처리할 로직
+# async: 비동기 처리 (서버가 요청을 기다리는 동안 다른 요청도 처리 가능)
+@app.post("/classify")
+async def classify(payload: ClassifyRequest):
+    text = payload.text 
+    
+    # spam.py의 check_spam 함수를 호출하여 결과 반환
+    label, score = check_spam(text)
+    
+    return {
+        "label": label, 
+        "score": score
+    }
+
+# 실행은 터미널에서 uvicorn app.main:app --reload 명령어로 수행하거나
+# 아래 주석을 해제하여 직접 실행할 수 있습니다.
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run(app, host="127.0.0.1", port=8000)
+</file>
+
+<file path="app/spam.py">
+def check_spam(text: str) -> tuple[str, int]:
+    # 소문자 변환 및 양끝 공백 제거
+    text = text.lower().strip()
+    
+    if text == "":
+        return "ham", 0
+        
+    spam_keywords = [
+        "free", "win", "winner", "prize", "click",
+        "buy now", "urgent", "cash", "money", "offer", "deal"
+    ]
+    
+    hit = 0
+    for kw in spam_keywords:
+        # 디버깅을 위한 출력 (실제 서비스 시에는 주석 처리 권장)
+        # print(kw, text) 
+        if kw in text:
+            hit += 1
+            
+    # 키워드가 2개 이상 검출되면 spam, 아니면 ham 반환
+    label = "spam" if hit >= 2 else "ham"
+    
+    return label, hit
+</file>
+
+<file path="requirements.txt">
+fastapi
+uvicorn
+python-multipart
+pytest
+httpx
+</file>
+
+<file path="static/index.html">
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>적당한 스팸 판별기 (AI Spam Checker)</title>
+</head>
+
+<body>
+    <h1>스팸 체크기</h1>
+    <textarea id="text" rows="5" cols="60" placeholder="스팸으로 의심되는 메시지를 붙여넣어주세요!"></textarea><br><br>
+    <button onclick="classify()">분류</button>
+    <h3 id="result"></h3>
+
+    <script>
+        function classify() {
+            const text = document.getElementById("text").value;
+
+            if (!text.trim()) {
+                document.getElementById("result").innerText = "메시지를 입력해주세요.";
+                return;
+            }
+
+            fetch("/classify", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ text: text })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById("result").innerText =
+                        "결과: " + data.label + " (score=" + data.score + ")";
+                })
+                .catch(() => {
+                    document.getElementById("result").innerText = "에러 발생";
+                });
+        }
+    </script>
+</body>
+
+</html>
+</file>
+
+<file path="tests/conftest.py">
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+</file>
+
+<file path="tests/test_api.py">
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+
+def test_classify_api_contract_ham():
+    response = client.post("/classify", json={"text": "hello"})
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "label" in data
+    assert "score" in data
+    assert data["label"] == "ham"
+    assert data["score"] == 0
+
+
+def test_classify_api_contract_spam():
+    response = client.post("/classify", json={"text": "free click"})
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["label"] == "spam"
+    assert data["score"] >= 2
+
+
+def test_classify_api_empty_text():
+    response = client.post("/classify", json={"text": ""})
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["label"] == "ham"
+    assert data["score"] == 0
+
+
+def test_classify_api_invalid_body():
+    response = client.post("/classify", json={})
+    assert response.status_code == 422
+</file>
+
+<file path="tests/test_spam.py">
+from app.spam import check_spam
+
+
+def test_check_spam_empty():
+    label, score = check_spam("")
+    assert label == "ham"
+    assert score == 0
+
+
+def test_check_spam_ham():
+    label, score = check_spam("hello nice to meet you")
+    assert label == "ham"
+    assert score == 0
+
+
+def test_check_spam_spam():
+    label, score = check_spam("free prize click now")
+    assert label == "spam"
+    assert score >= 2
+
+
+def test_check_spam_case_insensitive():
+    label, score = check_spam("FREE Prize")
+    assert label == "spam"
+    assert score == 2
+
+
+def test_check_spam_strip_whitespace():
+    label, score = check_spam("   free prize   ")
+    assert label == "spam"
+    assert score == 2
+</file>
+
+</files>

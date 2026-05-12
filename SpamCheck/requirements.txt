@@ -5,3 +5,6 @@ pytest==9.0.2
 httpx==0.28.1
 pydantic==2.12.5
 requests
+pandas
+scikit-learn
+joblib

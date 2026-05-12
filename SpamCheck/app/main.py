@@ -4,9 +4,11 @@ import traceback
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from app.spam import check_spam
-from app.issue import create_github_issue
 from pydantic import BaseModel
+
+from app.config import MODEL_MODE
+from app.spam import check_spam_rules, check_spam_ml
+from app.issue import create_github_issue
 
 
 logging.basicConfig(
@@ -39,15 +41,18 @@ class ClassifyRequest(BaseModel):
 async def classify(payload: ClassifyRequest):
     text = payload.text
 
-    logger.info(f"CALL /classify | text='{text}' | len={len(text)}")
+    logger.info(f"CALL /classify | mode={MODEL_MODE} | text='{text}' | len={len(text)}")
 
     try:
         if text == "crash":
             raise RuntimeError("의도적 장애 추가")
 
-        label, score = check_spam(text)
+        if MODEL_MODE == "ml":
+            label, score = check_spam_ml(text)
+        else:
+            label, score = check_spam_rules(text)
 
-        logger.info(f"OK /classify | label={label} score={score}")
+        logger.info(f"OK /classify | mode={MODEL_MODE} | label={label} score={score}")
 
         return {
             "label": label,
@@ -56,7 +61,7 @@ async def classify(payload: ClassifyRequest):
 
     except Exception as e:
         logger.exception(
-            f"FAIL /classify | text='{text}' | error={type(e).__name__}: {e}"
+            f"FAIL /classify | mode={MODEL_MODE} | text='{text}' | error={type(e).__name__}: {e}"
         )
 
         tb = traceback.format_exc()
@@ -66,6 +71,7 @@ async def classify(payload: ClassifyRequest):
         body = (
             "## Summary\n"
             f"- environment: local uvicorn server\n"
+            f"- mode: `{MODEL_MODE}`\n"
             f"- endpoint: /classify\n"
             f"- input(text, short): `{text}`\n"
             f"- input length: {len(text)}\n\n"

@@ -1,42 +1,84 @@
-from fastapi import FastAPI, Request
+import logging
+import traceback
+
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from app.spam import check_spam
+from app.issue import create_github_issue
 from pydantic import BaseModel
 
-# FastAPI 기반 웹 앱 생성
-# /docs (Swagger UI)에 표기되는 이름
+
+logging.basicConfig(
+    level=logging.INFO,
+    format=(
+        "%(asctime)s | %(levelname)s | "
+        "%(filename)s:%(lineno)d (%(funcName)s) | "
+        "%(message)s"
+    ),
+)
+
+logger = logging.getLogger("spamcheck")
+
 app = FastAPI(title="SpamCheck Web")
 
-# 정적 HTML 서빙: static 안에 파일들을 URL로 접근가능하게 설정
-# {URL}/static/…… 으로 접근 가능
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# 메인 페이지 (/) 처리: "/"로 접속 시 index.html 반환
+
 @app.get("/", response_class=HTMLResponse)
 def home():
     with open("static/index.html", encoding="utf-8") as f:
         return f.read()
 
+
 class ClassifyRequest(BaseModel):
     text: str
 
-# classify 요청이 올 때 처리할 로직
-# async: 비동기 처리 (서버가 요청을 기다리는 동안 다른 요청도 처리 가능)
+
 @app.post("/classify")
 async def classify(payload: ClassifyRequest):
-    text = payload.text 
-    
-    # spam.py의 check_spam 함수를 호출하여 결과 반환
-    label, score = check_spam(text)
-    
-    return {
-        "label": label, 
-        "score": score
-    }
+    text = payload.text
 
-# 실행은 터미널에서 uvicorn app.main:app --reload 명령어로 수행하거나
-# 아래 주석을 해제하여 직접 실행할 수 있습니다.
-# if __name__ == "__main__":
-#     import uvicorn
-#     uvicorn.run(app, host="127.0.0.1", port=8000)
+    logger.info(f"CALL /classify | text='{text}' | len={len(text)}")
+
+    try:
+        if text == "crash":
+            raise RuntimeError("의도적 장애 추가")
+
+        label, score = check_spam(text)
+
+        logger.info(f"OK /classify | label={label} score={score}")
+
+        return {
+            "label": label,
+            "score": score,
+        }
+
+    except Exception as e:
+        logger.exception(
+            f"FAIL /classify | text='{text}' | error={type(e).__name__}: {e}"
+        )
+
+        tb = traceback.format_exc()
+
+        title = f"[Local Error] /classify failed: {type(e).__name__}"
+
+        body = (
+            "## Summary\n"
+            f"- environment: local uvicorn server\n"
+            f"- endpoint: /classify\n"
+            f"- input(text, short): `{text}`\n"
+            f"- input length: {len(text)}\n\n"
+            "## Exception\n"
+            f"- type: `{type(e).__name__}`\n"
+            f"- message: `{str(e)}`\n\n"
+            "## Traceback (line info)\n"
+            f"```text\n{tb}\n```"
+        )
+
+        create_github_issue(title, body, logger)
+
+        return {
+            "label": "Internal Server Error",
+            "score": -1,
+        }

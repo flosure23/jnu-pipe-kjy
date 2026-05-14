@@ -1,0 +1,23 @@
+artifact_path: file:C:/Users/workspace/Antigravity/04_AISW/SpamCheck/mlruns/1/models/m-119d251bc7224b199eeac12b683fd19c/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.13.6
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.8.0
+    skops_trusted_types: null
+mlflow_version: 3.10.1
+model_id: m-119d251bc7224b199eeac12b683fd19c
+model_size_bytes: 36931
+model_uuid: m-119d251bc7224b199eeac12b683fd19c
+prompts: null
+run_id: 458da4d73337433686adca2c60ae9833
+utc_time_created: '2026-05-14 05:03:57.970403'

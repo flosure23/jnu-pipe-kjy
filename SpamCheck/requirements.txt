@@ -8,3 +8,4 @@ requests
 pandas
 scikit-learn
 joblib
+mlflow

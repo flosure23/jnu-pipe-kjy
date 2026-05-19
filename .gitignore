@@ -8,3 +8,6 @@ venv/
 .vscode/
 .pytest_cache/
 repomix-output.xml
+SpamCheck/mlflow.db
+SpamCheck/mlruns/
+SpamCheck/ml/artifacts/

@@ -47,7 +47,7 @@ async def classify(payload: ClassifyRequest):
         if text == "crash":
             raise RuntimeError("의도적 장애 추가")
 
-        if MODEL_MODE == "ml":
+        if MODEL_MODE in ["ml", "mlflow"]:
             label, score = check_spam_ml(text)
         else:
             label, score = check_spam_rules(text)

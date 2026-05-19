@@ -1,3 +1,4 @@
+from app.config import MODEL_MODE
 from app.model_loader import load_model
 
 
@@ -44,5 +45,8 @@ def check_spam_ml(text: str) -> tuple[str, float]:
     return pred, score
 
 
-def check_spam(text: str) -> tuple[str, int]:
+def check_spam(text: str) -> tuple[str, float]:
+    if MODEL_MODE in ["ml", "mlflow"]:
+        return check_spam_ml(text)
+
     return check_spam_rules(text)

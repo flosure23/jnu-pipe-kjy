@@ -10,4 +10,5 @@ venv/
 repomix-output.xml
 SpamCheck/mlflow.db
 SpamCheck/mlruns/
-SpamCheck/ml/artifacts/
+SpamCheck/ml/artifacts/*
+!SpamCheck/ml/artifacts/spam_model.joblib

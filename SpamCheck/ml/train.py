@@ -1,10 +1,12 @@
 import os
+import time
 from pathlib import Path
 
 import joblib
 import pandas as pd
 import mlflow
 import mlflow.sklearn
+from mlflow.tracking import MlflowClient
 
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import CountVectorizer
@@ -25,12 +27,25 @@ ARTIFACT_DIR = BASE_DIR / "artifacts"
 MODEL_PATH = ARTIFACT_DIR / "spam_model.joblib"
 
 DEFAULT_TRACKING_URI = (BASE_DIR.parent / "mlruns").resolve().as_uri()
-MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", DEFAULT_TRACKING_URI)
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI") or DEFAULT_TRACKING_URI
 MLFLOW_EXPERIMENT_NAME = os.getenv(
     "MLFLOW_EXPERIMENT_NAME",
-    "spam-classification-local",
+    "spam-classification-server",
 )
 MLFLOW_REGISTERED_MODEL_NAME = os.getenv("MLFLOW_REGISTERED_MODEL_NAME")
+MLFLOW_MODEL_ALIAS = os.getenv("MLFLOW_MODEL_ALIAS", "champion")
+
+
+def set_model_alias(model_name, version, alias):
+    client = MlflowClient()
+
+    for _ in range(30):
+        model_version = client.get_model_version(model_name, version)
+        if getattr(model_version, "status", "READY") == "READY":
+            break
+        time.sleep(1)
+
+    client.set_registered_model_alias(model_name, alias, version)
 
 
 def main():
@@ -57,10 +72,12 @@ def main():
 
     best_model = None
     best_model_name = None
+    best_run_id = None
     best_test_acc = -1
 
     for model_name, model in models.items():
         with mlflow.start_run(run_name=model_name):
+            run_id = mlflow.active_run().info.run_id
             pipeline = Pipeline([
                 ("vectorizer", CountVectorizer()),
                 ("classifier", model),
@@ -86,15 +103,10 @@ def main():
             mlflow.log_artifact(str(TRAIN_DATA_PATH))
             mlflow.log_artifact(str(TEST_DATA_PATH))
 
-            log_model_kwargs = {
-                "sk_model": pipeline,
-                "artifact_path": "model",
-            }
-
-            if MLFLOW_REGISTERED_MODEL_NAME:
-                log_model_kwargs["registered_model_name"] = MLFLOW_REGISTERED_MODEL_NAME
-
-            mlflow.sklearn.log_model(**log_model_kwargs)
+            mlflow.sklearn.log_model(
+                sk_model=pipeline,
+                artifact_path="model",
+            )
 
             print(f"[{model_name}]")
             print(f"train_accuracy: {train_acc:.4f}")
@@ -105,8 +117,20 @@ def main():
                 best_test_acc = test_acc
                 best_model = pipeline
                 best_model_name = model_name
+                best_run_id = run_id
 
     joblib.dump(best_model, MODEL_PATH)
+
+    if MLFLOW_REGISTERED_MODEL_NAME and best_run_id:
+        model_uri = f"runs:/{best_run_id}/model"
+        model_version = mlflow.register_model(model_uri, MLFLOW_REGISTERED_MODEL_NAME)
+
+        if MLFLOW_MODEL_ALIAS:
+            set_model_alias(
+                MLFLOW_REGISTERED_MODEL_NAME,
+                model_version.version,
+                MLFLOW_MODEL_ALIAS,
+            )
 
     print(f"Best model: {best_model_name}")
     print(f"Best test_accuracy: {best_test_acc:.4f}")

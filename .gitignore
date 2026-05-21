@@ -13,7 +13,3 @@ SpamCheck/mlruns/
 SpamCheck/ml/artifacts/*
 !SpamCheck/ml/artifacts/spam_model.joblib
 SpamCheck/mlartifacts/
-SpamCheck/mlflow.db
-SpamCheck/mlruns/
-SpamCheck/ml/artifacts/
-SpamCheck/mlartifacts/

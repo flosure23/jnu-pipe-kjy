@@ -29,7 +29,7 @@ def main():
     os.makedirs(ARTIFACT_DIR, exist_ok=True)
 
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-    mlflow.set_experiment("spam-classification-local")
+    mlflow.set_experiment("spam-classification-server")
 
     train_df = pd.read_csv(TRAIN_DATA_PATH)
     test_df = pd.read_csv(TEST_DATA_PATH)
@@ -66,7 +66,7 @@ def main():
             train_acc = accuracy_score(y_train, train_preds)
             test_acc = accuracy_score(y_test, test_preds)
 
-            mlflow.log_param("model_name", model_name)
+            mlflow.log_param("model_type", model_name)
             mlflow.log_param("train_data_path", TRAIN_DATA_PATH)
             mlflow.log_param("test_data_path", TEST_DATA_PATH)
             mlflow.log_param("train_row_count", len(train_df))

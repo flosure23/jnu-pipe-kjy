@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 import joblib
 import pandas as pd
 import mlflow
@@ -12,24 +14,30 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
-from app.config import MLFLOW_TRACKING_URI
 
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
 
-BASE_DIR = os.path.dirname(__file__)
-DATA_DIR = os.path.join(BASE_DIR, "data")
+TRAIN_DATA_PATH = DATA_DIR / "train.csv"
+TEST_DATA_PATH = DATA_DIR / "test.csv"
 
-TRAIN_DATA_PATH = os.path.join(DATA_DIR, "train.csv")
-TEST_DATA_PATH = os.path.join(DATA_DIR, "test.csv")
+ARTIFACT_DIR = BASE_DIR / "artifacts"
+MODEL_PATH = ARTIFACT_DIR / "spam_model.joblib"
 
-ARTIFACT_DIR = os.path.join(BASE_DIR, "artifacts")
-MODEL_PATH = os.path.join(ARTIFACT_DIR, "spam_model.joblib")
+DEFAULT_TRACKING_URI = (BASE_DIR.parent / "mlruns").resolve().as_uri()
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", DEFAULT_TRACKING_URI)
+MLFLOW_EXPERIMENT_NAME = os.getenv(
+    "MLFLOW_EXPERIMENT_NAME",
+    "spam-classification-local",
+)
+MLFLOW_REGISTERED_MODEL_NAME = os.getenv("MLFLOW_REGISTERED_MODEL_NAME")
 
 
 def main():
     os.makedirs(ARTIFACT_DIR, exist_ok=True)
 
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-    mlflow.set_experiment("spam-classification-server")
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
     train_df = pd.read_csv(TRAIN_DATA_PATH)
     test_df = pd.read_csv(TEST_DATA_PATH)
@@ -67,22 +75,26 @@ def main():
             test_acc = accuracy_score(y_test, test_preds)
 
             mlflow.log_param("model_type", model_name)
-            mlflow.log_param("train_data_path", TRAIN_DATA_PATH)
-            mlflow.log_param("test_data_path", TEST_DATA_PATH)
+            mlflow.log_param("train_data_path", str(TRAIN_DATA_PATH))
+            mlflow.log_param("test_data_path", str(TEST_DATA_PATH))
             mlflow.log_param("train_row_count", len(train_df))
             mlflow.log_param("test_row_count", len(test_df))
 
             mlflow.log_metric("train_accuracy", train_acc)
             mlflow.log_metric("test_accuracy", test_acc)
 
-            mlflow.log_artifact(TRAIN_DATA_PATH)
-            mlflow.log_artifact(TEST_DATA_PATH)
+            mlflow.log_artifact(str(TRAIN_DATA_PATH))
+            mlflow.log_artifact(str(TEST_DATA_PATH))
 
-            mlflow.sklearn.log_model(
-                sk_model=pipeline,
-                artifact_path="model",
-                registered_model_name="spam-model",
-            )
+            log_model_kwargs = {
+                "sk_model": pipeline,
+                "artifact_path": "model",
+            }
+
+            if MLFLOW_REGISTERED_MODEL_NAME:
+                log_model_kwargs["registered_model_name"] = MLFLOW_REGISTERED_MODEL_NAME
+
+            mlflow.sklearn.log_model(**log_model_kwargs)
 
             print(f"[{model_name}]")
             print(f"train_accuracy: {train_acc:.4f}")

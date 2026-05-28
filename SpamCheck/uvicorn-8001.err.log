@@ -1,0 +1,12 @@
+INFO:     Started server process [920]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
+2026-05-21 15:31:13,809 | INFO | main.py:45 (classify) | CALL /classify | mode=mlflow | text='free prize click now' | len=20
+Downloading artifacts:   0%|          | 0/5 [00:00<?, ?it/s]Downloading artifacts:  20%|##        | 1/5 [00:00<00:00,  4.06it/s]Downloading artifacts:  20%|##        | 1/5 [00:00<00:00,  4.06it/s]Downloading artifacts:  40%|####      | 2/5 [00:00<00:00,  3.83it/s]Downloading artifacts:  40%|####      | 2/5 [00:00<00:00,  3.83it/s]Downloading artifacts:  60%|######    | 3/5 [00:00<00:00,  3.83it/s]Downloading artifacts:  80%|########  | 4/5 [00:00<00:00,  3.83it/s]Downloading artifacts: 100%|##########| 5/5 [00:00<00:00,  3.83it/s]Downloading artifacts: 100%|##########| 5/5 [00:00<00:00,  9.61it/s]
+2026-05-21 15:31:23,190 | INFO | main.py:56 (classify) | OK /classify | mode=mlflow | label=spam score=0.998572723241606
+Downloading artifacts:   0%|          | 0/1 [00:00<?, ?it/s]Downloading artifacts: 100%|##########| 1/1 [00:00<00:00,  3.21it/s]Downloading artifacts: 100%|##########| 1/1 [00:00<00:00,  3.21it/s]Downloading artifacts: 100%|##########| 1/1 [00:00<00:00,  3.19it/s]
+2026-05-21 15:32:10,705 | INFO | main.py:45 (classify) | CALL /classify | mode=mlflow | text='hello1' | len=6
+2026-05-21 15:32:10,707 | INFO | main.py:56 (classify) | OK /classify | mode=mlflow | label=ham score=0.5
+2026-05-21 15:32:12,694 | INFO | main.py:45 (classify) | CALL /classify | mode=mlflow | text='hello!' | len=6
+2026-05-21 15:32:12,696 | INFO | main.py:56 (classify) | OK /classify | mode=mlflow | label=ham score=0.5

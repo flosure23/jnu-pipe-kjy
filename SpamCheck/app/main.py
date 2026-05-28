@@ -6,10 +6,13 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.config import MODEL_MODE
+from app.config import (
+    MODEL_MODE,
+    LOW_CONFIDENCE_THRESHOLD,
+)
 from app.spam import check_spam_rules, check_spam_ml
 from app.model_loader import get_model_info
-from app.issue import create_github_issue
+from app.issue import create_github_issue, update_issue_state
 
 
 logging.basicConfig(
@@ -42,7 +45,9 @@ class ClassifyRequest(BaseModel):
 async def classify(payload: ClassifyRequest):
     text = payload.text
 
-    logger.info(f"CALL /classify | mode={MODEL_MODE} | text='{text}' | len={len(text)}")
+    logger.info(
+        f"CALL /classify | mode={MODEL_MODE} | text='{text}' | len={len(text)}"
+    )
 
     try:
         if text == "crash":
@@ -50,10 +55,20 @@ async def classify(payload: ClassifyRequest):
 
         if MODEL_MODE in ["ml", "mlflow"]:
             label, score = check_spam_ml(text)
+
+            update_issue_state(
+                text=text,
+                label=label,
+                score=score,
+                threshold=LOW_CONFIDENCE_THRESHOLD,
+            )
+
         else:
             label, score = check_spam_rules(text)
 
-        logger.info(f"OK /classify | mode={MODEL_MODE} | label={label} score={score}")
+        logger.info(
+            f"OK /classify | mode={MODEL_MODE} | label={label} score={score}"
+        )
 
         return {
             "label": label,
@@ -63,7 +78,8 @@ async def classify(payload: ClassifyRequest):
 
     except Exception as e:
         logger.exception(
-            f"FAIL /classify | mode={MODEL_MODE} | text='{text}' | error={type(e).__name__}: {e}"
+            f"FAIL /classify | mode={MODEL_MODE} | text='{text}' "
+            f"| error={type(e).__name__}: {e}"
         )
 
         tb = traceback.format_exc()
@@ -89,4 +105,5 @@ async def classify(payload: ClassifyRequest):
         return {
             "label": "Internal Server Error",
             "score": -1,
+            "model_info": get_model_info(),
         }
